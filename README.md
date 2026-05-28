@@ -24,7 +24,7 @@ sp-model directory contains trained sentence piece model and vocab for my model 
 ### main.py
 - DEBUG: print info more frequently, use much smaller dataset to quickly run through and debug the program.
 - COMPILE: indicates pytorch`s computation graph compilation.  
-> But note that, when compiled, the inference test during training could output questionable string.
+    - But note that, when compiled, the inference test during training could output questionable string.
 - S\_P\_MODEL\_PATH: the path where sentence piece model is located.
 - SRC\_PATH: the path where source language dataset(lines of sentences) is located
 - TGT\_PATH: as above
@@ -38,7 +38,7 @@ sp-model directory contains trained sentence piece model and vocab for my model 
 - LOD\_PARA\_WRITE\_IN\_SHEET: write log of model parameters once model is loaded
 - BATCH\_AGGREGATE\_FACTOR: to aggregate batches and apply gradients for once, for limited GPU memory to simulate large batch.
 - BATCH\_SCALE\_FACTOR: to slow down learning rate change and prolong optimizer memory of time series. used along with NOAM\_FACTOR approximately 1 divided by BATCH\_SCALE\_FACTOR.
-> to apply the non-gradient-aggregate, but use smaller learning rate and slower learning rate change approach, for limited GPU memory
+    - to apply the non-gradient-aggregate, but use smaller learning rate and slower learning rate change approach, for limited GPU memory
 - NOAM\_FACTOR: Noam learning rate schedule factor.
 - LABEL\_SMOOTHING: label\_smoothing
 - NAUGHTY\_MODEL: steps interval to print some training sample. to illustrate possible sampling mistakes.
@@ -58,5 +58,12 @@ sp-model directory contains trained sentence piece model and vocab for my model 
 - BETA\_ONE\_ORI: BETA\_ONE before revised with BATCH\_SCALE\_FACTOR
 - RANDOM\_SEED: random seed
 - MAX\_LEN: length of tokens per sample(sentence)
+### Deploy Guidence
+The current code is executable on transformer big model to produce quality-guaranted model.
+One should adjust the hyper parameters: MAX\_TOKENS\_PER\_BUCKET, NOAM\_FACTOR, BATCH\_AGGREGATE\_FACTOR and BATCH\_SCALE\_FACTOR according to their GPU memory and other hardware specification.
+##But be aware that there are three empirical suggestions to produce a heathy model:## 
+- ##MAX\_TOKENS\_PER\_BUCKET multiplies BATCH\_AGGREGATE\_FACTOR should exceeds 10000##
+- ##BATCH\_SCALE\_FACTOR mulplies NOAM\_FACTOR should approximately equals one##
+- ##WARMUP should be within (8000,12000) scope##
 
 
