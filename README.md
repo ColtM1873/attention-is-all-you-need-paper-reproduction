@@ -58,7 +58,7 @@ sp-model directory contains trained sentence piece model and vocab for my model 
 - BETA\_ONE\_ORI: BETA\_ONE before revised with BATCH\_SCALE\_FACTOR
 - RANDOM\_SEED: random seed
 - MAX\_LEN: length of tokens per sample(sentence)
-### Deploy Guidence
+## Deploy Guidence
 The current code is executable on transformer big model to produce quality-guaranted model.
 One should adjust the hyper parameters: MAX\_TOKENS\_PER\_BUCKET, NOAM\_FACTOR, BATCH\_AGGREGATE\_FACTOR and BATCH\_SCALE\_FACTOR according to their GPU memory and other hardware specification.
 ##But be aware that there are three empirical suggestions to produce a heathy model:## 
