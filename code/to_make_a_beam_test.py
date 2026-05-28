@@ -7,15 +7,15 @@ import to_make_a_batch
 import to_make_a_train
 import to_make_a_model
 
+DEBUG = True
 BEAM_START = 5
 BEAM_ADD = 1
 BEAM_ADD_INVERVAL = 30
-#EPSILON = 0.2
 REPEAT_SCALE = 0.7
 REDUCE_SCALE =  math.log(1/REPEAT_SCALE)
 
 
-def beam_search_decode(model, src, src_mask, max_len,  device_beam , global_start_symbol , global_end_symbol , vocab):
+def beam_search_decode(model, src, src_mask, max_len,  device_beam , global_start_symbol , global_end_symbol , vocab , sp_model):
     # src: (1, src_seq_len)
     memory = model.encode(src, src_mask)
     # memory: (1, src_seq_len, d_model)
@@ -33,7 +33,7 @@ def beam_search_decode(model, src, src_mask, max_len,  device_beam , global_star
             if current_tgt_length >= max_len - 1:
                 for x in still_generating_list:
                     x[0].append(global_end_symbol)
-                    x[1] = x[1] / current_tgt_length
+                    x[1] = x[1] / max ((current_tgt_length-1) , 1)
                 already_end_list = already_end_list + still_generating_list
                 break
 
@@ -84,7 +84,6 @@ def beam_search_decode(model, src, src_mask, max_len,  device_beam , global_star
                 for i in range (len(current_seq)):
                     repeated_id = current_seq[i]
                     current_log_prob[repeated_id] -= REDUCE_SCALE
-
                 with_history_prob = [
                     pro + current_history_prob for pro in current_log_prob
                 ]
@@ -110,14 +109,24 @@ def beam_search_decode(model, src, src_mask, max_len,  device_beam , global_star
                 new_member = [new_seq, value]
 
                 if token_id == global_end_symbol:
-                    new_member[1] = new_member[1] / current_tgt_length
+                    new_member[1] = new_member[1] / max (  (current_tgt_length-2) , 1 )
                     already_end_list.append(new_member)
                 else:
                     new_generating_list.append(new_member)
 
             still_generating_list = new_generating_list
+            if DEBUG:
+                print("-" * 50)
+                print(f"\nThis is the {current_tgt_length} iter. Candidates are as follow:")
+                print("-" * 50)
+
+                for iter_i in range(len(still_generating_list)):
+                    list_i = still_generating_list[iter_i][0]
+                    str_i = sp_model.decode(list_i)
+                    print(str_i)
             current_tgt_length += 1
 
+    # ---- 兜底：万一 already_end_list 为空 ----
     if not already_end_list:
         if still_generating_list:
             already_end_list = still_generating_list
@@ -136,17 +145,41 @@ def main_test( sp_model, transformer_model ,max_len , global_start_symbol , devi
 
         eng_str = "I have nothing to offer but blood, toil, tears, and sweat. We have before us an ordeal of the most grievous kind. We have before us many, many months of struggle and suffering. You ask, what is our aim? I can answer in one word. It is victory. Victory at all costs - Victory in spite of all terrors - Victory, however long and hard the road may be, for without victory there is no survival."
         print(eng_str)
+
+        to_list = sp_model.encode(eng_str, out_type=int)
+        to_list.insert(0,global_start_symbol)
+        to_list.append(global_end_symbol)
+
         src = torch.tensor(
-            sp_model.encode(eng_str, out_type=int),
+            to_list,
             dtype=torch.long
         ).unsqueeze(0).to(device_beam)
+        if DEBUG:
+            print("***src tokenizition complete.***")
 
         batch_test = to_make_a_batch.Batch(src=src, pad=global_pad_id)
+        if DEBUG:
+            print("***batch structured.***")
 
         return_gen = beam_search_decode(
-            transformer_model, src, batch_test.src_mask, max_len, device_beam , global_end_symbol = global_end_symbol , global_start_symbol = global_start_symbol ,  vocab = vocab_size
+            model = transformer_model,
+            src = src,
+            src_mask = batch_test.src_mask,
+            max_len = max_len,
+            device_beam = device_beam ,
+            global_end_symbol = global_end_symbol , 
+            global_start_symbol = global_start_symbol ,  
+            vocab = vocab_size,
+            sp_model = sp_model,
         )
 
+        if DEBUG:
+            print("***return_gen as int index list get.***")
+            print(f"***which is {return_gen}***")
         out_sentence = sp_model.decode(return_gen)
+        if DEBUG:
+            print("***return_gen use sp_model decoded.***")
         print("The translation is as below:\n\t", out_sentence)
+        if DEBUG:
+            print("***print complete.***")
 

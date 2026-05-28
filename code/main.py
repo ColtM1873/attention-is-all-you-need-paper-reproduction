@@ -49,16 +49,16 @@ INF_PARA_WRITE_IN_SHEET = "snapshot_after_inf.txt"
 LOD_PARA_WRITE_IN_SHEET = "snapshot_after_load.txt"
 
 
-BATCH_AGGREGATE_FACTOR = 5
-BATCH_SCALE_FACTOR = 2
-NOAM_FACTOR = 0.6
+BATCH_AGGREGATE_FACTOR = 8
+BATCH_SCALE_FACTOR = 3
+NOAM_FACTOR = 0.4
 LABEL_SMOOTHING = 0.1
-NAUGHTY_MODEL = 2000
+NAUGHTY_MODEL = 20000
 NUM_EPOCHES = 400 
-WARMUP_STEP = 5000 
+WARMUP_STEP = 10000 
 VALIDATION_SET_SIZE = 50000 
-MAX_TOKENS_PER_BUCKET = 2048 
-VALIDATE_INTERVAL = 10000 
+MAX_TOKENS_PER_BUCKET = 1024 + 512 
+VALIDATE_INTERVAL = 10000 * 2 
 PRINT_INTERVAL = 2000 
 D_MODEL = 1024
 OPTIMIZER_LEARNING_RATE = 0.5
@@ -77,7 +77,7 @@ if DEBUG:
     OPTIMIZER_LEARNING_RATE = 0.2
     DROP_OUT = 0
 
-INFER_INTERVAL = 1
+INFER_INTERVAL = 0.5
 PATIENCE = 20
 PER_BUCKET_SCALE = 1.3
 NUM_OF_HEADS = 16
@@ -244,7 +244,8 @@ def main():
     if COMPILE:
         transformer_model = torch.compile(transformer_model, dynamic=True)
     epoch_start = time.time()
-    with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+    #with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+    if True:
         for epoch in range(NUM_EPOCHES):
             transformer_model.train()
             epoch_elapse = time.time() - epoch_start
@@ -283,8 +284,13 @@ def main():
                     total_loss_for_batch , avg_loss_as_scalar = loss_compute(
                             output_of_model , tgt_y , ntokens
                             )
+                    avg_loss_as_scalar = avg_loss_as_scalar / BATCH_AGGREGATE_FACTOR
                     avg_loss_as_scalar.backward()
-                    if step % BATCH_AGGREGATE_FACTOR == 0
+                    #torch.nn.utils.clip_grad_norm_(transformer_model.parameters(), max_norm=1.0)
+                    if global_step % BATCH_AGGREGATE_FACTOR == 0:
+                        # step starts from zero, thus can`t be used here
+                        # and global_step is the perfect one here
+                        # require VALIDATE_INTERVAL and VALIDATE_INTERVAL * INFER_INTERVAL is the integer multiple of BATCH_AGGREGATE_FACTOR
                         model_optimizer.step()
                         model_optimizer.zero_grad( set_to_none = True )
                         lr_scheduler . step()
@@ -319,6 +325,7 @@ def main():
 #---------------------------------------Validation---------------------------------------------
 #---------------------------------------Validation---------------------------------------------
                     if( global_step % VALIDATE_INTERVAL == 0 ):
+                        #torch.cuda.empty_cache()
                         transformer_model.eval()
                         current_val_loss_sum = 0.0
                         with torch.no_grad():
@@ -378,7 +385,7 @@ def main():
 
 
 #---------------------------------------INFER_INTERVALInferAndSave---------------------------------------------
-                    if ( global_step % (VALIDATE_INTERVAL * INFER_INTERVAL) == 0 ):
+                    if ( global_step % (VALIDATE_INTERVAL * INFER_INTERVAL) == 0  ):
 
                         save_and_print_parameters.save_and_print_and_write_para(
                                 model = transformer_model ,
@@ -397,7 +404,8 @@ def main():
                                             
                         transformer_model.eval()
                         print("\n" ,"$-"*20)
-                        with torch.autocast(device_type='cuda', enabled = False):
+                        #with torch.autocast(device_type='cuda', enabled = False):
+                        if True:
                             to_make_a_beam_test.main_test(
                                     sp_model , transformer_model ,
                                     MAX_LEN , global_start_symbol = global_bos ,

@@ -47,7 +47,8 @@ class Generator( nn.Module ):
         #self.pre_norm = nn.LayerNorm(embed_weight.size(1), eps = 1e-6)
         
     def forward( self, x ):
-        with torch.autocast(device_type='cuda', dtype=torch.bfloat16, enabled=False):
+        #with torch.autocast(device_type='cuda', dtype=torch.bfloat16, enabled=False):
+        if True:
         #return log_softmax(F.linear(self.pre_norm(x), self.embed_weight), dim=-1)
             return log_softmax(F.linear(x, self.embed_weight), dim=-1)
 

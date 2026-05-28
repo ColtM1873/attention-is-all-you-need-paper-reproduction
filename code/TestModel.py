@@ -15,10 +15,8 @@ REPEAT_PENAL = math.log(0.9)
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-CHECKPOINT_DIR = "~/Desktop/BestModel"
-S_P_MODEL_PATH = "~/Desktop/EngChoVocabReallyGood.model"
-#SRC_FILE_PATH = "~/Desktop/wmt23.en-zh.src"
-#OUTPUT_FILE_PATH = "~/Desktop/wmt23.en-zh.output"
+CHECKPOINT_DIR = "/home/nill/Desktop/VC/BestModel"
+S_P_MODEL_PATH = "/home/nill/Desktop/VC/God/EngChoVocabReallyGood.model"
 MAX_LEN = 128
 
 sp_model = sentencepiece.SentencePieceProcessor()
@@ -57,7 +55,7 @@ BEAM_ADD = 1
 BEAM_ADD_INVERVAL = 30
 EPSILON = 0.2
 
-def inspect_model_without_optimizer(model, prefix="", check_grad=False):
+def inspect_model(model, prefix="", check_grad=False):
     """
     打印模型参数的关键信息：dtype, device, norm, std, min, max
     check_grad=True 时同时打印梯度信息
@@ -94,12 +92,13 @@ def inspect_model_without_optimizer(model, prefix="", check_grad=False):
         
         print(line)
 
+
     # 汇总
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\n总参数量: {total_params:,}")
     print(f"{sep}\n")
 
-inspect_model_without_optimizer(transformer_model)
+inspect_model(transformer_model)
 
 def beam_search_decode(model, src, src_mask, max_len, start_symbol):
     # src: (1, src_seq_len)
@@ -166,10 +165,8 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol):
                 current_seq = still_generating_list[i][0]
                 current_history_prob = still_generating_list[i][1]
                 current_log_prob = log_probs_list[i]
-
                 for rid in current_seq:
                     current_log_prob[rid] += REPEAT_PENAL
-
                 with_history_prob = [
                     pro + current_history_prob for pro in current_log_prob
                 ]
@@ -214,6 +211,7 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol):
                     
 
 
+    # ---- 兜底：万一 already_end_list 为空 ----
     if not already_end_list:
         if still_generating_list:
             already_end_list = still_generating_list
@@ -228,9 +226,13 @@ def beam_search_decode(model, src, src_mask, max_len, start_symbol):
     return already_end_list[max_index][0]
 
 
-def process_line(line : str) -> str :
+def process_line(line : str ) -> str :
+    to_list = sp_model.encode(line, out_type=int)
+    to_list.insert(0,global_start_symbol)
+    to_list.append(global_end_symbol)
+
     src = torch.tensor(
-        sp_model.encode(line, out_type=int),
+        to_list,
         dtype=torch.long
     ).unsqueeze(0).to(DEVICE)
 
@@ -258,8 +260,13 @@ def old_main():
         eng_str = input(
             " input your English sentence to translate into Chinese here\n \t => :"
         )
+
+        to_list = sp_model.encode(eng_str, out_type=int)
+        to_list.insert(0,global_start_symbol)
+        to_list.append(global_end_symbol)
+
         src = torch.tensor(
-            sp_model.encode(eng_str, out_type=int),
+            to_list,
             dtype=torch.long
         ).unsqueeze(0).to(DEVICE)
 

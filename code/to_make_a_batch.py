@@ -67,6 +67,20 @@ class TranslationDataset(Dataset):
             torch.tensor(self.tgt[idx] , dtype = torch . long)
     # return one dim tensor of shape (seq_len)
 
+class PreprocessedDataset(Dataset):
+    """从预处理好的 .pt 文件直接加载，零开销"""
+    def __init__(self, pt_path):
+        data = torch.load(pt_path, map_location='cpu', weights_only=False)
+        self.src      = data['src']        # list[array('I')]
+        self.tgt      = data['tgt']
+        self.src_lens = data['src_lens']   # list[int]
+        self.tgt_lens = data['tgt_lens']
+    def __len__(self):
+        return len(self.src)
+    def __getitem__(self, idx):
+        return (torch.tensor(self.src[idx], dtype=torch.long),
+                torch.tensor(self.tgt[idx], dtype=torch.long))
+
 import random
 from torch.utils.data import Sampler
 
